@@ -1,50 +1,51 @@
 use std::io;
 use reqwest;
 use serde_json::Value;
-fn main() {
-    let currency_codes: [&str; 4]=  ["pln", "usd", "eur", "fjd"];
-
-    loop {
-        let mut buffer = String::new();
-        io::stdin().read_line(&mut buffer);
-        let mut input = buffer.trim().to_lowercase();
-        let mut input: Vec<&str> = input.split(" ").collect();
-
-        match input[..] {
-            ["list"] => {println!("{:?}", currency_codes);}
-            ["exit"] => {break;}
-            [source, destiny, quantity] => {
-                if currency_codes.contains(&source) && currency_codes.contains(&destiny) && &quantity.parse::<f64>().unwrap() > &0.0 {
-                    let url = format!("{}{}","https://open.er-api.com/v6/latest/", &source);
-                    match reqwest::blocking::get(url) {
-                        Ok(response) => {
-                            if response.status().is_success() {
-                                match response.text() {
-                                    Ok(body) => {
-                                        let mut json: Value =  serde_json::from_str(&body).unwrap();
-                                        let mut rates: Option<f64> = json.get("rates").unwrap().get(destiny.to_uppercase()).unwrap().as_f64();
-                                        if !rates.is_none() {
-                                            println!("Converted value: {} for rates: {:?}", &rates.unwrap() * &quantity.parse::<f64>().unwrap(), rates);
-                                        } else {
-                                            println!("There is no currency code as: {}", &destiny);
-                                        }
-                                    }
-                                    Err(err) => eprintln!("Error: {:?}", err)
-                                }
+static CURRENCY_CODES: [&str; 4]=  ["pln", "usd", "eur", "fjd"];
+fn request_manager(source:&str, destiny:&str, quantity:&str) {
+    if CURRENCY_CODES.contains(&source) && CURRENCY_CODES.contains(&destiny) && &quantity.parse::<f64>().unwrap() > &0.0 {
+        let url = format!("{}{}","https://open.er-api.com/v6/latest/", &source);
+        match reqwest::blocking::get(url) {
+            Ok(response) => {
+                if response.status().is_success() {
+                    match response.text() {
+                        Ok(body) => {
+                            let json: Value =  serde_json::from_str(&body).unwrap();
+                            let rates: f64 = json.get("rates").unwrap().get(destiny.to_uppercase()).unwrap().as_f64().unwrap();
+                            if !rates.is_nan() {
+                                println!("Converted value: {} for rates: {:?}", &rates * &quantity.parse::<f64>().unwrap(), rates);
                             } else {
-                                eprintln!("Error: {:?}", response.status());
+                                println!("There is no currency code as: {}", &destiny);
                             }
                         }
-                        Err(err) => eprintln!("Error: {:?}", err),
+                        Err(err) => eprintln!("Error: {:?}", err)
                     }
                 } else {
-                    println!("Something wrong");
-                    println!("Source: {:?}", source);
-                    println!("Destiny: {:?}", destiny);
-                    println!("Quantity: {:?}", quantity);
+                    eprintln!("Error: {:?}", response.status());
                 }
             }
-            _ => {println!("I don't recognize: \n{:?}", input.join(" "));}
+            Err(err) => eprintln!("Error: {:?}", err),
+        }
+    } else {
+        println!("At least one of the parameters is incorrect. For all currencies type \"list\".\n\
+                  Source: {:?}\n\
+                  Destiny: {:?}\n\
+                  Quantity: {:?}\n",
+                  source, destiny, quantity);
+    }
+}
+fn main() {
+    loop {
+        let mut buffer = String::new();
+        let _ = io::stdin().read_line(&mut buffer);
+        let input = buffer.trim().to_lowercase();
+        let input: Vec<&str> = input.split(" ").collect();
+
+        match input[..] {
+            ["list"] => println!("{:?}", CURRENCY_CODES),
+            ["exit"] => break,
+            [source, destiny, quantity] => request_manager(source, destiny, quantity),
+            _ => println!("I don't recognize: \n{:?}", input.join(" "))
         }
     }
 }
