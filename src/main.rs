@@ -89,7 +89,7 @@ fn help_manager() {
               Full list of commends:\n\
               Name\tDescription\n\
               list\tList all offered currency's.\n\
-              list X\tAll rates of the specific currency.\n\
+              list X\tAll rates of the specific currency. X=currency\n\
               exit\tExit the program.\n\
               X Y Z\tYou can write two currency codes and program will exchange the amount in quantity from first one to send.\n\
               \tX=First currency, Y=currency Z=Amount.")
