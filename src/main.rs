@@ -2,7 +2,6 @@ use std::io;
 use reqwest;
 use serde_json::Value;
 
-
 static CURRENCY_CODES: [&str; 161]=  [
     "aed", "afn", "all", "amd", "ang", "aoa", "ars", "aud", "awg", "azn",
     "bam", "bbd", "bdt", "bgn", "bhd", "bif", "bmd", "bnd", "bob", "brl",
@@ -22,10 +21,12 @@ static CURRENCY_CODES: [&str; 161]=  [
     "vuv", "wst", "xaf", "xcd", "xdr", "xof", "xpf", "yer", "zar", "zmw",
     "zwl"];
 
+
 fn make_request(currency: &str) -> reqwest::Result<reqwest::blocking::Response> {
     let url = "https://open.er-api.com/v6/latest/".to_owned() + currency;
     return reqwest::blocking::get(url);
 }
+
 fn currency_details(currency: &str) {
     if CURRENCY_CODES.contains(&currency) {
         match make_request(currency) {
@@ -35,6 +36,7 @@ fn currency_details(currency: &str) {
                         Ok(body) => {
                             let json: Value =  serde_json::from_str(&body).unwrap();
                             let rates: &Value = json.get("rates").unwrap();
+                            let rates = serde_json::to_string(rates).unwrap().replace("\"", "\'");
                             println!("Rates for {}:", currency);
                             println!("{:?}", rates)
                         }
@@ -48,6 +50,7 @@ fn currency_details(currency: &str) {
         }
     }
 }
+
 fn exchange_manager(source: &str, destiny: &str, quantity: &str) {
     let quantity: f64 = quantity.parse::<f64>().unwrap();
     if CURRENCY_CODES.contains(&source) && CURRENCY_CODES.contains(&destiny) && quantity > 0.0 {
