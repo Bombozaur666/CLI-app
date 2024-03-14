@@ -21,9 +21,10 @@ static CURRENCY_CODES: [&str; 161]=  [
     "vuv", "wst", "xaf", "xcd", "xdr", "xof", "xpf", "yer", "zar", "zmw",
     "zwl"];
 
+static URL_BASE: &str = "https://open.er-api.com/v6/latest/";
 
 fn make_request(currency: &str) -> reqwest::Result<reqwest::blocking::Response> {
-    let url = "https://open.er-api.com/v6/latest/".to_owned() + currency;
+    let url = URL_BASE.to_owned() + currency;
     return reqwest::blocking::get(url);
 }
 
