@@ -1,0 +1,40 @@
+pipeline {
+    agent  any
+    stages {
+      stage('clear_before') {
+         steps {
+            sh 'rm -rf *'
+         }
+      }
+
+      stage('Clone Git') {
+         steps {
+            sh 'git clone https://github.com/Bombozaur666/CLI-app'
+         }
+      }
+
+      stage('Build') {
+         agent {
+            dockerfile {
+               image 'bombozaur666/rust:latest'
+               // or use "filename 'Dockerfile'
+               //         dir      'CLI-app'"
+               reuseNode true
+            }
+         }
+         steps {
+               dir('CLI-app') {
+                    sh 'cargo build'
+                    archiveArtifacts 'target/debug/CLI-app.exe'
+                    sh 'cargo test'
+               }
+         }
+      }
+
+      stage('clear_after') {
+         steps {
+            sh 'rm -rf *'
+         }
+      }
+    }
+}
