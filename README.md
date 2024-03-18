@@ -31,4 +31,10 @@ List of all commands:
 - cur1 cur2 qu
 - help
 
-For specific informations and usage of commands use `help`.
+For specific information and usage of commands use `help`.
+
+## Docker
+Dockerfile is configured for Jenkins usage. If you want use it for local development change content to:
+```bash
+FROM bombozaur666/cli-app:latest
+```
