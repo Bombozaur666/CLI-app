@@ -29,7 +29,7 @@ fn make_request(currency: &str) -> reqwest::Result<reqwest::blocking::Response> 
 }
 
 fn currency_details(currency: &str) -> String {
-    let mut result = String::new();
+    let result: String;
     if CURRENCY_CODES.contains(&currency) {
         match make_request(currency) {
             Ok(response) => {
@@ -65,14 +65,16 @@ fn represent_error_template(source: &str, destiny: &str, quantity: &str) -> Stri
 
 fn exchange_manager(source: &str, destiny: &str, quantity: &str) ->String {
     let _quantity: f64;
+    let result: String;
+
     match quantity.parse::<f64>() {
         Ok(q) => { _quantity = q; }
-        Err(parse_float_error) => {return  represent_error_template(source, destiny, quantity);}
+        Err(_parse_float_error) => {return  represent_error_template(source, destiny, quantity);}
     }
-    let mut result = String::new();
+
     if CURRENCY_CODES.contains(&source) && CURRENCY_CODES.contains(&destiny) && _quantity > 0.0 {
         match make_request(source) {
-            Ok(mut response) => {
+            Ok(response) => {
                 if response.status().is_success() {
                     match response.text() {
                         Ok(body) => {
@@ -111,14 +113,15 @@ fn help_manager() -> String {
 fn main() {
     println!("Welcome to CLI-app - real-time currency exchanger.\n\
               If you don't know what to do type \"help\".");
-
+    let mut result : String = String::new();
+    let mut buffer = String::with_capacity(20);
     loop {
-        let mut buffer = String::new();
+        result.clear();
+        buffer.clear();
         let _ = io::stdin().read_line(&mut buffer);
         let input = buffer.trim().to_lowercase();
         let input: Vec<&str> = input.split(" ").collect();
 
-        let mut result = String::new();
         match input[..] {
             ["list"] => result = format!("{:?}", CURRENCY_CODES),
             ["list", currency] => result = currency_details(currency),
@@ -199,8 +202,8 @@ mod tests {
         let proper_destiny = "eur";
         let proper_quantity = "2.0";
 
-        let mut origin = String::new();
-        let mut target = String::new();
+        let mut origin:String = String::new();
+        let mut target:String = String::new();
 
         origin = represent_error_template(bad_source, proper_destiny, proper_quantity);
         target = exchange_manager(bad_source, proper_destiny, proper_quantity);
@@ -221,7 +224,7 @@ mod tests {
 
         let url = URL_BASE.to_owned() + proper_source;
         match reqwest::blocking::get(url) {
-            Ok(mut response) => {
+            Ok(response) => {
                 if response.status().is_success() {
                     match response.text() {
                         Ok(body) => {
