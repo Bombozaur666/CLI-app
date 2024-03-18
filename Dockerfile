@@ -1,1 +1,1 @@
-FROM rust:1.67
+FROM bombozaur666/rust:latest
