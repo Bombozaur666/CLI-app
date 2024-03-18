@@ -28,7 +28,8 @@ fn make_request(currency: &str) -> reqwest::Result<reqwest::blocking::Response> 
     return reqwest::blocking::get(url);
 }
 
-fn currency_details(currency: &str) {
+fn currency_details(currency: &str) -> String {
+    let mut result = String::new();
     if CURRENCY_CODES.contains(&currency) {
         match make_request(currency) {
             Ok(response) => {
@@ -38,62 +39,74 @@ fn currency_details(currency: &str) {
                             let json: Value =  serde_json::from_str(&body).unwrap();
                             let rates: &Value = json.get("rates").unwrap();
                             let rates = serde_json::to_string(rates).unwrap().replace("\"", "\'");
-                            println!("Rates for {}:", currency);
-                            println!("{:?}", rates)
+                            result = format!("Rates for {}:\n{:?}", currency, rates);
                         }
-                        Err(err) => eprintln!("Error: {:?}", err)
+                        Err(err) => result = format!("Error: {:?}", err)
                     }
                 } else {
-                    eprintln!("Error: {:?}", response.status());
+                    result = format!("Error: {:?}", response.status());
                 }
             }
-            Err(err) => eprintln!("Error: {:?}", err),
+            Err(err) => result = format!("Error: {:?}", err),
         }
+    }else {
+        result = format!("Currency code \"{currency}\" not in the list.")
     }
+    return result
 }
 
-fn exchange_manager(source: &str, destiny: &str, quantity: &str) {
-    let quantity: f64 = quantity.parse::<f64>().unwrap();
-    if CURRENCY_CODES.contains(&source) && CURRENCY_CODES.contains(&destiny) && quantity > 0.0 {
+fn represent_error_template(source: &str, destiny: &str, quantity: &str) -> String{
+    return format!("At least one of the parameters is incorrect. For all currencies type \"list\".\n\
+                  Source: {:?}\n\
+                  Destiny: {:?}\n\
+                  Quantity: {:?}\n",
+                  source, destiny, quantity);
+}
+
+fn exchange_manager(source: &str, destiny: &str, quantity: &str) ->String {
+    let _quantity: f64;
+    match quantity.parse::<f64>() {
+        Ok(q) => { _quantity = q; }
+        Err(parse_float_error) => {return  represent_error_template(source, destiny, quantity);}
+    }
+    let mut result = String::new();
+    if CURRENCY_CODES.contains(&source) && CURRENCY_CODES.contains(&destiny) && _quantity > 0.0 {
         match make_request(source) {
-            Ok(response) => {
+            Ok(mut response) => {
                 if response.status().is_success() {
                     match response.text() {
                         Ok(body) => {
                             let json: Value =  serde_json::from_str(&body).unwrap();
                             let rates: f64 = json.get("rates").unwrap().get(destiny.to_uppercase()).unwrap().as_f64().unwrap();
                             if !rates.is_nan() {
-                                println!("Converted value: {} for rates: {}", rates * quantity, rates);
+                                result = format!("Converted value: {} for rates: {}", rates * _quantity, rates);
                             } else {
-                                eprintln!("There is no currency code as: {}", destiny);
+                                result = format!("There is no currency code as: {}", destiny);
                             }
                         }
-                        Err(err) => eprintln!("Error: {:?}", err)
+                        Err(err) => result = format!("Error: {:?}", err)
                     }
                 } else {
-                    eprintln!("Error: {:?}", response.status());
+                    result = format!("Error: {:?}", response);
                 }
             }
-            Err(err) => eprintln!("Error: {:?}", err),
+            Err(err) => result = format!("Error: {:?}", err.to_string()),
         }
     } else {
-        eprintln!("At least one of the parameters is incorrect. For all currencies type \"list\".\n\
-                  Source: {:?}\n\
-                  Destiny: {:?}\n\
-                  Quantity: {:?}\n",
-                  source, destiny, quantity);
+        result = represent_error_template(source, destiny, quantity);
     }
+    return result
 }
 
-fn help_manager() {
-    println!("Welcome in Help Page.\n\
-              Full list of commends:\n\
-              Name\tDescription\n\
-              list\tList all offered currency's.\n\
-              list X\tAll rates of the specific currency. X=currency\n\
-              exit\tExit the program.\n\
-              X Y Z\tYou can write two currency codes and program will exchange the amount in quantity from first one to send.\n\
-              \tX=First currency, Y=currency Z=Amount.")
+fn help_manager() -> String {
+    return "Welcome in Help Page.\n\
+            Full list of commends:\n\
+            Name\tDescription\n\
+            list\tList all offered currency's.\n\
+            list X\tAll rates of the specific currency. X=currency\n\
+            exit\tExit the program.\n\
+            X Y Z\tYou can write two currency codes and program will exchange the amount in quantity from first one to send.\n\
+            \tX=First currency, Y=currency Z=Amount.".parse().unwrap();
 }
 fn main() {
     println!("Welcome to CLI-app - real-time currency exchanger.\n\
@@ -105,13 +118,130 @@ fn main() {
         let input = buffer.trim().to_lowercase();
         let input: Vec<&str> = input.split(" ").collect();
 
+        let mut result = String::new();
         match input[..] {
-            ["list"] => println!("{:?}", CURRENCY_CODES),
-            ["list", currency] => currency_details(currency),
-            ["help"] => help_manager(),
+            ["list"] => result = format!("{:?}", CURRENCY_CODES),
+            ["list", currency] => result = currency_details(currency),
+            ["help"] => result = help_manager().parse().unwrap(),
             ["exit"] => break,
-            [source, destiny, quantity] => exchange_manager(source, destiny, quantity),
-            _ => eprintln!("I don't recognize: \n{:?}", input.join(" "))
+            [source, destiny, quantity] => result = exchange_manager(source, destiny, quantity),
+            _ => result = format!("I don't recognize: \n{:?}", input.join(" "))
         }
+        println!("{result}");
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::string::String;
+
+    #[test]
+    fn test_help_manager(){
+        let origin: String = "Welcome in Help Page.\n\
+            Full list of commends:\n\
+            Name\tDescription\n\
+            list\tList all offered currency's.\n\
+            list X\tAll rates of the specific currency. X=currency\n\
+            exit\tExit the program.\n\
+            X Y Z\tYou can write two currency codes and program will exchange the amount in quantity from first one to send.\n\
+            \tX=First currency, Y=currency Z=Amount.".parse().unwrap();
+
+        let target: String = help_manager();
+
+        assert_eq!(origin, target);
+    }
+
+    #[test]
+    fn test_currency_details() {
+        use std::string::String;
+        let proper_currency = "pln";
+        let bad_currency = "xyz";
+
+        let url = URL_BASE.to_owned() + proper_currency;
+        let mut origin = String::new();
+        let mut target = String::new();
+
+        match reqwest::blocking::get(url) {
+            Ok(response) => {
+                if response.status().is_success() {
+                    match response.text() {
+                        Ok(body) => {
+                            let json: Value =  serde_json::from_str(&body).unwrap();
+                            let rates: &Value = json.get("rates").unwrap();
+                            let rates = serde_json::to_string(rates).unwrap().replace("\"", "\'");
+                            origin = format!("Rates for {}:\n{:?}", proper_currency, rates);
+                        }
+                        Err(err) => origin = format!("Error: {:?}", err)
+                    }
+                } else {
+                    origin = format!("Error: {:?}", response.status());
+                }
+            }
+            Err(err) => origin = format!("Error: {:?}", err),
+        }
+
+        target = currency_details(proper_currency);
+        assert_eq!(origin, target);
+
+        origin = format!("Currency code \"{bad_currency}\" not in the list.");
+        target = currency_details(bad_currency);
+        assert_eq!(origin, target);
+    }
+
+    #[test]
+    fn test_exchange_manager() {
+        let bad_source = "xyz";
+        let bad_destiny = "xyz";
+        let bad_quantity = "xyz";
+        let proper_source = "pln";
+        let proper_destiny = "eur";
+        let proper_quantity = "2.0";
+
+        let mut origin = String::new();
+        let mut target = String::new();
+
+        origin = represent_error_template(bad_source, proper_destiny, proper_quantity);
+        target = exchange_manager(bad_source, proper_destiny, proper_quantity);
+        assert_eq!(origin, target);
+
+        origin = represent_error_template(proper_source, bad_destiny, &proper_quantity);
+        target = exchange_manager(proper_source, bad_destiny, &proper_quantity);
+        assert_eq!(origin, target);
+
+        origin = represent_error_template(proper_source, proper_destiny, &bad_quantity);
+        target = exchange_manager(proper_source, proper_destiny, &bad_quantity);
+        assert_eq!(origin, target);
+
+        origin = represent_error_template(proper_source, proper_destiny, &bad_quantity);
+        target = exchange_manager(proper_source, proper_destiny, &bad_quantity);
+        assert_eq!(origin, target);
+
+
+        let url = URL_BASE.to_owned() + proper_source;
+        match reqwest::blocking::get(url) {
+            Ok(mut response) => {
+                if response.status().is_success() {
+                    match response.text() {
+                        Ok(body) => {
+                            let json: Value =  serde_json::from_str(&body).unwrap();
+                            let rates: f64 = json.get("rates").unwrap().get(proper_destiny.to_uppercase()).unwrap().as_f64().unwrap();
+                            if !rates.is_nan() {
+                                origin = format!("Converted value: {} for rates: {}", rates * proper_quantity.parse::<f64>().unwrap() , rates);
+                            } else {
+                                origin = format!("There is no currency code as: {}", proper_destiny);
+                            }
+                        }
+                        Err(err) => origin = format!("Error: {:?}", err)
+                    }
+                } else {
+                    origin = format!("Error: {:?}", response);
+                }
+            }
+            Err(err) => origin = format!("Error: {:?}", err.to_string()),
+        }
+        target = exchange_manager(proper_source, proper_destiny, &proper_quantity);
+        assert_eq!(origin, target)
     }
 }
