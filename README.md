@@ -38,3 +38,24 @@ Dockerfile is configured for Jenkins usage. If you want use it for local develop
 ```bash
 FROM bombozaur666/cli-app:latest
 ```
+
+### Building
+To build local docker:
+```bash
+docker build -t cli-app .
+```
+### Local usage
+To run this app in docker use this command:
+```bash
+docker run -it cli-app cargo run 
+```
+## Testing
+### Docker
+```bash
+docker run cli-app cargo test
+```
+### Local
+```bash
+cargo test
+```
+
